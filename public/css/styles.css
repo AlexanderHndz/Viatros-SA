@@ -1,22 +1,147 @@
-body { font-family: sans-serif; background: #f0f2f5; text-align: center;}
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 40px;
+/* --- VARIABLES --- */
+:root {
+    /* Mirá César, aquí guardamos los colores de la página para usarlos fácil en todo el código. */
+    --primary: #003366; 
+    --accent: #ff8c00;  
+    --light: #f4f7f6;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.3);
 }
 
-.card {
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    /* Este degradado es el que le da el colorcito al fondo de toda la página. */
+    background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+    color: #333;
+    min-height: 100vh;
 }
 
-button {
-    background: #007bff;
+/* --- BARRA DE NAVEGACIÓN --- */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 5%;
+    background: var(--primary);
     color: white;
-    border: none;
-    padding: 10px;
-    border-radius: 5px;
+}
+
+.navbar .logo { font-size: 1.5rem; font-weight: bold; }
+.navbar a { 
+    color: white; 
+    text-decoration: none; 
+    margin-left: 20px; 
+    transition: 0.3s; 
+}
+.navbar a:hover { color: var(--accent); }
+
+/* --- CONTENEDORES TIPO VIDRIO --- */
+.glass-container {
+    /* César, esto es lo que hace que los cuadros se miren transparentes y con desenfoque atrás. */
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    padding: 40px;
+    margin: 40px auto;
+    max-width: 500px;
+    text-align: center;
+    animation: fadeIn 0.8s ease-out;
+}
+
+/* --- FORMULARIOS --- */
+.input-group { margin-bottom: 20px; text-align: left; }
+.input-group label { display: block; margin-bottom: 8px; font-weight: bold; }
+.input-group input { 
+    width: 100%; 
+    padding: 12px; 
+    border: 1px solid #ccc; 
+    border-radius: 8px; 
+    box-sizing: border-box; 
+}
+
+/* --- BOTONES --- */
+.btn-primary {
+    background: var(--primary); 
+    color: white; 
+    border: none; 
+    padding: 12px 25px;
+    border-radius: 8px; 
+    cursor: pointer; 
+    width: 100%; 
+    font-size: 1.1rem;
+    transition: 0.3s;
+}
+.btn-primary:hover { 
+    background: #002244; 
+    transform: translateY(-2px); /* Con esto el botón se mueve un poquito al tocarlo */
+}
+
+.btn-accent { background: var(--accent); }
+
+/* --- DISEÑO DEL CATÁLOGO --- */
+
+/* Estos son los cuadros de los 22 departamentos. */
+.cuadrado-depto {
+    aspect-ratio: 1 / 1; /* Esto obliga a que siempre sean cuadrados perfectos. Pero los podes cambiar va vos */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: var(--glass-bg);
+    border-radius: 20px;
     cursor: pointer;
+    transition: 0.3s;
+    padding: 20px;
+}
+
+.cuadrado-depto:hover { transform: translateY(-10px); background: white; }
+
+/* Estas son las tarjetas de los lugares ya cuando entrás al departamento. */
+.tarjeta-destino {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Para que todas las tarjetas midan lo mismo aunque el texto cambie. */
+}
+
+.foto-destino {
+    width: 100%;
+    height: 220px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 4px solid var(--accent);
+}
+
+.contenido-destino {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; 
+}
+
+/* César, con esto el botón de reserva siempre se queda hasta abajo de la tarjeta. */
+.btn-reserva-abajo {
+    margin-top: auto; 
+}
+
+.precio-estandar {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #28a745; 
+    margin: 15px 0;
+    text-align: center;
+    background: #f4fdf6;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px dashed #28a745;
+}
+
+/* Esta animación es para que las cosas aparezcan suave de abajo hacia arriba. */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }

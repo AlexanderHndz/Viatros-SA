@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Destinos | Viatros, S. A.</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .grid-container { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 30px; 
+            padding: 40px 5%; 
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .titulo-seccion { text-align: center; margin-top: 40px; color: var(--primary); font-size: 2.5rem; animation: fadeIn 0.8s; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">Viatros, S. A.</div>
+        <div>
+            <a href="index.html">Inicio</a>
+            <a href="login.html">Iniciar Sesión</a>
+        </div>
+    </nav>
+
+    <h1 class="titulo-seccion">Nuestras Rutas Oficiales</h1>
+    <p style="text-align: center; color: #555; font-size: 1.1rem;">Seleccione un departamento para ver los destinos disponibles.</p>
+
+    <main id="contenedor-deptos" class="grid-container">
+        <div style="text-align: center; width: 100%; grid-column: 1 / -1;">
+            <p>Cargando maravillas de Guatemala...</p>
+        </div>
+    </main>
+
+    <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

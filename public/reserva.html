@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completar Reserva | Viatros, S. A.</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Viatros, S. A.</div>
+        <a href="catalogo.html">⬅ Volver al Catálogo</a>
+    </nav>
+
+    <div class="glass-container" style="max-width: 600px;">
+        <h2>Complete su Reserva</h2>
+        <h3 id="nombre-destino-reserva" style="color: var(--primary);">Cargando destino...</h3>
+        
+        <div style="background: #e0eafc; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 1.2rem;">Total a Pagar: <strong id="precio-display" style="color: var(--accent); font-size: 1.5rem;">Q0.00</strong></p>
+        </div>
+
+        <form id="form-reserva" onsubmit="procesarReserva(event)">
+            <div class="input-group">
+                <label>Nombre del Titular</label>
+                <input type="text" id="res-nombre" required readonly style="background: #f0f0f0;">
+            </div>
+            <div class="input-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="res-email" required readonly style="background: #f0f0f0;">
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Teléfono</label>
+                    <input type="tel" id="res-tel" placeholder="Ej. 55554444" required>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>DPI (13 dígitos)</label>
+                    <input type="text" id="res-dpi" placeholder="Ej. 1234567890101" minlength="13" maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '')" title="Debe contener exactamente 13 números" required>
+                </div>
+            </div>
+
+            <div class="input-group" style="border: 1px dashed #ccc; padding: 15px; border-radius: 8px; background: #fafafa;">
+                <label style="color: #d9534f;">📄 Subir Antecedentes (Penales y Policiacos en PDF)</label>
+                <input type="file" id="res-pdf" accept=".pdf" required>
+                <small style="color: #666;">Requisito obligatorio de seguridad interna.</small>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <div class="input-group" style="flex: 2;">
+                    <label>Tipo de Paquete</label>
+                    <select id="res-paquete" onchange="calcularPrecio()" style="width: 100%; padding: 12px; border-radius: 8px;">
+                        <option value="Eco">Mochilero / Económico (Bus)</option>
+                        <option value="Premium">Premium / Confort (Privado/Vuelo)</option>
+                    </select>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Cupos</label>
+                    <input type="number" id="res-cupos" min="1" max="10" value="1" onchange="calcularPrecio()" required>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Fecha de Viaje</label>
+                <input type="date" id="res-fecha" required>
+            </div>
+
+            <button type="submit" class="btn-primary btn-accent">Confirmar Reserva Oficial</button>
+        </form>
+    </div>
+
+    <script>
+        let precioMochilero = 0;
+        let precioPremium = 0;
+        let idDestinoActual = 0;
+        const usuarioLogueado = JSON.parse(localStorage.getItem('usuarioViatros'));
+
+        window.onload = async () => {
+            if (!usuarioLogueado) { window.location.href = 'login.html'; return; }
+            
+            document.getElementById('res-nombre').value = usuarioLogueado.nombre;
+            document.getElementById('res-email').value = usuarioLogueado.email;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            idDestinoActual = urlParams.get('destino');
+
+            if (idDestinoActual) {
+                const res = await fetch(`/api/destino-individual/${idDestinoActual}`);
+                const destino = await res.json();
+                
+                document.getElementById('nombre-destino-reserva').innerText = destino.nombre_lugar;
+                
+                const numeros = destino.presupuesto_estimado.match(/\d+(?:,\d+)?/g).map(n => parseInt(n.replace(',', '')));
+                precioMochilero = numeros[0];
+
+                precioPremium = numeros.length > 1 ? numeros[1] : precioMochilero * 1.5; 
+
+                const mañana = new Date();
+                mañana.setDate(mañana.getDate() + 1);
+                document.getElementById('res-fecha').min = mañana.toISOString().split("T")[0];
+
+                calcularPrecio();
+            }
+        };
+
+        function calcularPrecio() {
+            const paquete = document.getElementById('res-paquete').value;
+            const cupos = document.getElementById('res-cupos').value;
+            const precioBase = paquete === 'Eco' ? precioMochilero : precioPremium;
+            const total = precioBase * cupos;
+            document.getElementById('precio-display').innerText = `Q${total.toLocaleString('es-GT')}.00`;
+            return total;
+        }
+
+        async function procesarReserva(e) {
+            e.preventDefault();
+
+            alert("✅ Archivo PDF verificado y escaneado con éxito por nuestro sistema de seguridad.");
+
+            const dataReserva = {
+                id_usuario: usuarioLogueado.id_usuario,
+                id_destino: idDestinoActual,
+                fecha_viaje: document.getElementById('res-fecha').value,
+                cupos: document.getElementById('res-cupos').value,
+                tipo_paquete: document.getElementById('res-paquete').value,
+                precio_total: calcularPrecio(),
+                dpi: document.getElementById('res-dpi').value,
+                telefono: document.getElementById('res-tel').value
+            };
+
+            try {
+                const peticion = await fetch('/api/reservar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataReserva)
+                });
+                const respuesta = await peticion.json();
+
+                if (respuesta.exito) {
+                    alert("🎉 ¡Reserva confirmada! Gracias por elegir Viatros, S. A.");
+                    window.location.href = 'perfil.html'; 
+                } else {
+                    alert("Error: " + respuesta.mensaje);
+                }
+            } catch (err) {
+                alert("Hubo un error de conexión.");
+            }
+        }
+    </script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

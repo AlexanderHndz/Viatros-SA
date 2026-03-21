@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil | Viatros, S. A.</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .reserva-card {
+            background: white; border-left: 5px solid var(--accent); padding: 20px;
+            margin-bottom: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Viatros, S. A.</div>
+        <div>
+            <a href="catalogo.html">Catálogo</a>
+        </div>
+    </nav>
+
+    <div class="glass-container" style="max-width: 800px;">
+        <h2 style="color: var(--primary);"><span id="perfil-nombre"></span>, este es tu itinerario</h2>
+        <p>Aquí puedes ver todos los viajes que tienes reservados con nosotros.</p>
+        
+        <div id="lista-reservas" style="margin-top: 30px; text-align: left;">
+            <p>Cargando tus aventuras...</p>
+        </div>
+    </div>
+
+    <script>
+        window.onload = async () => {
+            const usuarioLogueado = JSON.parse(localStorage.getItem('usuarioViatros'));
+            if (!usuarioLogueado) { window.location.href = 'login.html'; return; }
+            
+            document.getElementById('perfil-nombre').innerText = "Hola " + usuarioLogueado.nombre;
+
+            try {
+                const res = await fetch(`/api/mis-reservas/${usuarioLogueado.id_usuario}`);
+                const reservas = await res.json();
+                
+                const contenedor = document.getElementById('lista-reservas');
+                contenedor.innerHTML = '';
+
+                if (reservas.length === 0) {
+                    contenedor.innerHTML = '<p style="text-align:center;">Aún no tienes viajes reservados. <br><br> <a href="catalogo.html" class="btn-primary" style="display:inline-block; text-decoration:none;">Explorar Destinos</a></p>';
+                    return;
+                }
+
+                reservas.forEach(r => {
+                    const fechaViaje = new Date(r.fecha_viaje).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                    contenedor.innerHTML += `
+                        <div class="reserva-card">
+                            <div>
+                                <h3 style="margin:0; color:var(--primary);">${r.nombre_lugar}</h3>
+                                <p style="margin: 5px 0; color: #666;">📅 Fecha: ${fechaViaje}</p>
+                                <p style="margin: 0; font-size: 0.9rem;">📦 Paquete ${r.tipo_paquete} | 👥 ${r.cupos_reservados} cupos</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="display:block; font-size: 0.8rem; color: #888;">Total pagado</span>
+                                <strong style="color: var(--accent); font-size: 1.3rem;">Q${r.precio_total.toLocaleString('es-GT')}.00</strong>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                document.getElementById('lista-reservas').innerHTML = '<p>Error al cargar el historial.</p>';
+            }
+        };
+    </script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
