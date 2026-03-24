@@ -32,7 +32,6 @@ async function cargarDepartamentos() {
 async function verDestinos(idDepto, nombreDepto) {
     const contenedor = document.getElementById('contenedor-deptos');
     
-    // Aquí cambiamos los textos de la página para que sepa dónde está parado el cliente
     document.querySelector('.titulo-seccion').innerText = `Maravillas de ${nombreDepto}`;
     document.querySelector('.titulo-seccion').nextElementSibling.innerText = "Seleccione su próxima aventura";
 
@@ -100,7 +99,7 @@ function irAReserva(idDestino) {
     const usuarioGuardado = localStorage.getItem('usuarioViatros');
 
     if (!usuarioGuardado) {
-        alert("🔒 Por seguridad, tenés que iniciar sesión para reservar.");
+        alert("Holaaa, ¡Tienes que registrate para poder reservera!");
         window.location.href = "login.html";
     } else {
         // Si todo está bien, te mandamos a la página de reserva con el ID del lugar

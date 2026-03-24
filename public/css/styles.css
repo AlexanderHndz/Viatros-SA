@@ -123,7 +123,6 @@ body {
     flex-grow: 1; 
 }
 
-/* César, con esto el botón de reserva siempre se queda hasta abajo de la tarjeta. */
 .btn-reserva-abajo {
     margin-top: auto; 
 }

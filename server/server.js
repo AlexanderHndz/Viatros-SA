@@ -1,7 +1,14 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 const { poolPromise, sql } = require('./db');
+const { unsubscribe } = require('diagnostics_channel');
+
+const PDFDocument = require('pdfkit');
+const nodemailer = require('nodemailer');
+const { buffer } = require('stream/consumers');
 
 const app = express();
 const PORT = 3000;
@@ -44,15 +51,19 @@ app.get('/api/destinos/:idDepto', async (req, res) => {
 app.post('/api/registro', async (req, res) => {
     try {
         const { nombre, email, password } = req.body;
+
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
         const pool = await poolPromise;
         await pool.request()
             .input('nombre', sql.VarChar, nombre)
             .input('email', sql.VarChar, email)
-            .input('password', sql.VarChar, password)
+            .input('password', sql.VarChar, hashedPassword)
             .query('INSERT INTO viatrosApp.dbo.Usuarios (nombre, email, password) VALUES (@nombre, @email, @password)');
         res.status(201).json({ exito: true });
     } catch (err) {
-        res.status(500).json({ exito: false, mensaje: 'Ese correo ya existe, César.' });
+        res.status(500).json({ exito: false, mensaje: 'Ese correo ya existe.' });
     }
 });
 
@@ -61,16 +72,25 @@ app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const pool = await poolPromise;
+
         const result = await pool.request()
             .input('email', sql.VarChar, email)
-            .input('password', sql.VarChar, password)
-            .query('SELECT id_usuario, nombre, email FROM viatrosApp.dbo.Usuarios WHERE email = @email AND password = @password');
+            .query('SELECT id_usuario, nombre, email, password FROM viatrosApp.dbo.Usuarios WHERE email = @email');
 
-        if (result.recordset.length > 0) {
-            res.json({ exito: true, usuario: result.recordset[0] });
+        if (result.recordset.length > 0) { 
+            const usuario = result.recordset[0];
+            const coincide = await bcrypt.compare(password, usuario.password);
+            if (coincide) {
+                delete usuario.password;
+                res.json({ exito: true, usuario: usuario });
+            } else {
+                res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.' })
+            }
+
         } else {
-            res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.' });
-        }
+                res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.'} )
+            }
+
     } catch (err) {
         res.status(500).json({ exito: false });
     }
@@ -117,18 +137,96 @@ app.post('/api/reservar', async (req, res) => {
                 .input('tel', sql.VarChar, telefono)
                 .query('INSERT INTO viatrosApp.dbo.Reservas (id_usuario, id_destino, fecha_viaje, cupos_reservados, tipo_paquete, precio_total, dpi_cliente, telefono_cliente) VALUES (@id_u, @id_d, @fecha, @cupos, @tipo, @precio, @dpi, @tel)');
 
-            await transaction.commit(); 
-            res.json({ exito: true });
+            const datosCliente = await transaction.request()
+                .input('id_u', sql.Int, id_usuario)
+                .query('SELECT nombre, email FROM viatrosApp.dbo.Usuarios WHERE id_usuario = @id_u');
+            
+            const datosDestino = await transaction.request()
+                .input('id_d', sql.Int, id_destino)
+                .query('SELECT nombre_lugar FROM viatrosApp.dbo.Destinos WHERE id_destino = @id_d');
+
+            const cliente = datosCliente.recordset[0];
+            const destino = datosDestino.recordset[0];
+
+            await transaction.commit();
+            
+            const doc = new PDFDocument({ margin: 50 });
+            let buffers = [];
+            
+            doc.on('data', buffers.push.bind(buffers));
+            
+            // --- NUEVO BLOQUE CON DETECTOR DE ERRORES ---
+            doc.on('end', async () => {
+                try {
+                    let pdfData = Buffer.concat(buffers);
+
+                    let transporter = nodemailer.createTransport({
+                        service: 'gmail',
+                        auth: {
+                            user: process.env.EMAIL_USER,
+                            pass: process.env.EMAIL_PASS
+                        }
+                    });
+
+                    let mailOptions = {
+                        from: `"Viatros, S. A." <${process.env.EMAIL_USER}>`,
+                        to: cliente.email,
+                        subject: '🎫 ¡Tu reserva está confirmada! - Viatros, S.A.',
+                        text: `Hola ${cliente.nombre},\n\nGracias por reservar con nosotros. Adjunto encontrarás tu pase de abordar para tu viaje a ${destino.nombre_lugar}.\n\n¡Que disfrutes tu aventura!\n\nAtte. El equipo de Viatros.`,
+                        attachments: [
+                            {
+                                filename: `Boleto_Viatros_${id_destino}.pdf`,
+                                content: pdfData
+                            }
+                        ]
+                    };
+
+                    console.log("⏳ Intentando enviar correo a:", cliente.email);
+                    let info = await transporter.sendMail(mailOptions);
+                    console.log("✅ ¡Correo enviado con éxito!", info.response);
+                    
+                    // ¡AQUÍ ESTÁ LA MAGIA! Respondemos a la página HASTA que se envía el correo
+                    res.json({ exito: true });
+
+                } catch (errorCorreo) {
+                    // SI FALLA, AHORA SÍ NOS VA A GRITAR EL ERROR EN LA CONSOLA
+                    console.log("🔥 ERROR GIGANTE DE CORREO:", errorCorreo);
+                    res.json({ exito: true, advertencia: "Reserva guardada, pero el correo falló." });
+                }
+            });
+
+            doc.fontSize(25).fillColor('#EAB308').text('VIATROS, S. A.', { align: 'center' }); 
+            doc.moveDown();
+            doc.fontSize(16).fillColor('#000000').text('Pase de Abordar Oficial', { align: 'center' });
+            doc.moveDown();
+            doc.fontSize(12).text(`Pasajero: ${cliente.nombre}`);
+            doc.text(`DPI: ${dpi}`);
+            doc.text(`Teléfono: ${telefono}`);
+            doc.moveDown();
+            doc.text(`Destino: ${destino.nombre_lugar}`);
+            doc.text(`Fecha del viaje: ${fecha_viaje}`);
+            doc.text(`Cupos reservados: ${cupos}`);
+            doc.text(`Paquete: ${tipo_paquete}`);
+            doc.moveDown();
+            doc.fontSize(14).text(`Total Pagado: Q${precio_total}`, { underline: true });
+            doc.moveDown(2);
+            doc.fontSize(10).fillColor('gray').text('Este boleto es generado automáticamente. Por favor, preséntalo el día de tu viaje.', { align: 'center' });
+            
+            doc.end(); 
+            // ❌ IMPORTANTE: Asegurate de BORRAR el "res.json({ exito: true });" 
+            // que estaba aquí abajo, porque ya lo movimos arriba.
+
         } catch (err) {
             await transaction.rollback(); 
             throw err;
         }
     } catch (err) {
+        console.log(err);
         res.status(500).json({ exito: false });
     }
 });
 
-// Por último, esta jala el historial para que el cliente mire sus viajes en su perfil.
+
 app.get('/api/mis-reservas/:idUsuario', async (req, res) => {
     try {
         const pool = await poolPromise;
