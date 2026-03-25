@@ -13,14 +13,11 @@ const { buffer } = require('stream/consumers');
 const app = express();
 const PORT = 3000;
 
-// Mira aquí le decimos al servidor que acepte datos y que use la carpeta 'public' para el diseño.
 app.use(cors());
 app.use(express.json()); 
 app.use(express.static(path.join(__dirname, '../public')));
 
 // --- RUTAS DEL CATÁLOGO ---
-
-// Esta ruta nos trae los 22 departamentos para armar los cuadritos del inicio.
 app.get('/api/deptos', async (req, res) => {
     try {
         const pool = await poolPromise;
@@ -31,7 +28,6 @@ app.get('/api/deptos', async (req, res) => {
     }
 });
 
-// Cuando haces clic en un departamento, esta ruta busca qué lugares tiene guardados.
 app.get('/api/destinos/:idDepto', async (req, res) => {
     try {
         const { idDepto } = req.params;
@@ -46,12 +42,9 @@ app.get('/api/destinos/:idDepto', async (req, res) => {
 });
 
 // --- SEGURIDAD Y USUARIOS ---
-
-// Aquí guardamos a los clientes nuevos en la base de datos.
 app.post('/api/registro', async (req, res) => {
     try {
         const { nombre, email, password } = req.body;
-
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
@@ -67,7 +60,6 @@ app.post('/api/registro', async (req, res) => {
     }
 });
 
-// Revisamos si el correo y la clave coinciden con lo que hay en SQL.
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -80,25 +72,22 @@ app.post('/api/login', async (req, res) => {
         if (result.recordset.length > 0) { 
             const usuario = result.recordset[0];
             const coincide = await bcrypt.compare(password, usuario.password);
+            
             if (coincide) {
                 delete usuario.password;
                 res.json({ exito: true, usuario: usuario });
             } else {
-                res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.' })
+                res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.' });
             }
-
         } else {
-                res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.'} )
-            }
-
+            res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.' });
+        }
     } catch (err) {
         res.status(500).json({ exito: false });
     }
 });
 
 // --- RESERVAS ---
-
-// Solo nos trae la info de un lugar para llenar la página de reserva.
 app.get('/api/destino-individual/:idDestino', async (req, res) => {
     try {
         const pool = await poolPromise;
@@ -111,8 +100,6 @@ app.get('/api/destino-individual/:idDestino', async (req, res) => {
     }
 });
 
-// Resta los cupos y guarda la reserva al mismo tiempo.
-// Si algo falla, el rollback deshace todo para no dejar datos a medias.
 app.post('/api/reservar', async (req, res) => {
     try {
         const { id_usuario, id_destino, fecha_viaje, cupos, tipo_paquete, precio_total, dpi, telefono } = req.body;
@@ -155,7 +142,6 @@ app.post('/api/reservar', async (req, res) => {
             
             doc.on('data', buffers.push.bind(buffers));
             
-            // --- NUEVO BLOQUE CON DETECTOR DE ERRORES ---
             doc.on('end', async () => {
                 try {
                     let pdfData = Buffer.concat(buffers);
@@ -181,16 +167,10 @@ app.post('/api/reservar', async (req, res) => {
                         ]
                     };
 
-                    console.log("⏳ Intentando enviar correo a:", cliente.email);
-                    let info = await transporter.sendMail(mailOptions);
-                    console.log("✅ ¡Correo enviado con éxito!", info.response);
-                    
-                    // ¡AQUÍ ESTÁ LA MAGIA! Respondemos a la página HASTA que se envía el correo
+                    await transporter.sendMail(mailOptions);
                     res.json({ exito: true });
 
                 } catch (errorCorreo) {
-                    // SI FALLA, AHORA SÍ NOS VA A GRITAR EL ERROR EN LA CONSOLA
-                    console.log("🔥 ERROR GIGANTE DE CORREO:", errorCorreo);
                     res.json({ exito: true, advertencia: "Reserva guardada, pero el correo falló." });
                 }
             });
@@ -213,19 +193,15 @@ app.post('/api/reservar', async (req, res) => {
             doc.fontSize(10).fillColor('gray').text('Este boleto es generado automáticamente. Por favor, preséntalo el día de tu viaje.', { align: 'center' });
             
             doc.end(); 
-            // ❌ IMPORTANTE: Asegurate de BORRAR el "res.json({ exito: true });" 
-            // que estaba aquí abajo, porque ya lo movimos arriba.
 
         } catch (err) {
             await transaction.rollback(); 
             throw err;
         }
     } catch (err) {
-        console.log(err);
         res.status(500).json({ exito: false });
     }
 });
-
 
 app.get('/api/mis-reservas/:idUsuario', async (req, res) => {
     try {
@@ -245,7 +221,6 @@ app.get('/api/mis-reservas/:idUsuario', async (req, res) => {
     }
 });
 
-// Con esto encendemos el motor en el puerto 3000.
 app.listen(PORT, () => {
     console.log(`Viatros, S. A. funcionando en http://localhost:${PORT}`);
 });

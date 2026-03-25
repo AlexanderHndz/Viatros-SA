@@ -144,3 +144,29 @@ body {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- MAGIA DEL MAPA INTERACTIVO (Estilo Viatros) --- */
+#contenedor-mapa {
+    width: 100%;
+    max-width: 650px; /* Tamaño ideal */
+    filter: drop-shadow(0 10px 15px rgba(0, 51, 102, 0.2)); /* Sombra azulada */
+}
+
+#contenedor-mapa path {
+    fill: var(--primary); /* El mapa usa tu color azul oficial */
+    stroke: var(--light); /* Bordes claritos para separar los deptos */
+    stroke-width: 1;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+#contenedor-mapa path:hover {
+    fill: var(--accent); /* Se pinta de Naranja al pasar el mouse */
+    filter: drop-shadow(0 0 10px var(--accent)); /* Resplandor naranja */
+    transform: translateY(-3px) scale(1.01); /* Efecto 3D suave */
+}
+
+/* Ocultar elementos fácilmente */
+.oculto {
+    display: none !important;
+}
