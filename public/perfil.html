@@ -10,6 +10,14 @@
             background: white; border-left: 5px solid var(--accent); padding: 20px;
             margin-bottom: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.3s ease; /* Transición suave */
+        }
+        
+        /* Pequeña animación para el letrero de "HOY" */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
@@ -50,17 +58,44 @@
                 }
 
                 reservas.forEach(r => {
-                    const fechaViaje = new Date(r.fecha_viaje).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+                    const fechaViajeObj = new Date(r.fecha_viaje);
+                    const fechaHoy = new Date();
+                    // Ajuste para la zona horaria de Guatemala si es necesario, pero simplificado aquí
+                    const fechaViajeTxt = fechaViajeObj.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }); 
+                    
+                    // Calcular diferencia en días (ignorando horas)
+                    const tiempoViaje = new Date(fechaViajeObj.getFullYear(), fechaViajeObj.getMonth(), fechaViajeObj.getDate()).getTime();
+                    const tiempoHoy = new Date(fechaHoy.getFullYear(), fechaHoy.getMonth(), fechaHoy.getDate()).getTime();
+                    const diferenciaTiempo = tiempoViaje - tiempoHoy;
+                    const diasFaltantes = Math.round(diferenciaTiempo / (1000 * 3600 * 24));
+
+                    let badgeEstado = '';
+                    let estiloTarjeta = 'border-left: 5px solid var(--accent);';
+
+                    if (diasFaltantes < 0) {
+                        badgeEstado = '<span style="background: #e0e0e0; color: #555; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">✅ Viaje Completado</span>';
+                        estiloTarjeta = 'border-left: 5px solid #ccc; opacity: 0.7;'; 
+                    } else if (diasFaltantes === 0) {
+                        badgeEstado = '<span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; display: inline-block; animation: pulse 1s infinite;">🚀 ¡Tu viaje es HOY!</span>';
+                    } else {
+                        badgeEstado = `<span style="background: #e3f2fd; color: var(--primary); padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">⏳ Faltan ${diasFaltantes} días</span>`;
+                    }
+
                     contenedor.innerHTML += `
-                        <div class="reserva-card">
+                        <div class="reserva-card" style="${estiloTarjeta}">
                             <div>
+                                <div style="margin-bottom: 8px;">${badgeEstado}</div>
                                 <h3 style="margin:0; color:var(--primary);">${r.nombre_lugar}</h3>
-                                <p style="margin: 5px 0; color: #666;">📅 Fecha: ${fechaViaje}</p>
+                                <p style="margin: 5px 0; color: #666;">📅 Fecha: ${fechaViajeTxt}</p>
                                 <p style="margin: 0; font-size: 0.9rem;">📦 Paquete ${r.tipo_paquete} | 👥 ${r.cupos_reservados} cupos</p>
                             </div>
                             <div style="text-align: right;">
                                 <span style="display:block; font-size: 0.8rem; color: #888;">Total pagado</span>
                                 <strong style="color: var(--accent); font-size: 1.3rem;">Q${r.precio_total.toLocaleString('es-GT')}.00</strong>
+                                
+                                <button onclick="window.open('/api/descargar-boleto/${r.id_reserva}')" class="btn-primary" style="margin-top: 15px; padding: 8px 12px; font-size: 0.85rem; display: block; border-radius: 5px;">
+                                    📥 Descargar Pase
+                                </button>
                             </div>
                         </div>
                     `;

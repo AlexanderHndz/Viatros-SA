@@ -4,11 +4,11 @@ const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const { poolPromise, sql } = require('./db');
-const { unsubscribe } = require('diagnostics_channel');
 
+// Herramientas para el Boleto Mágico
 const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
-const { buffer } = require('stream/consumers');
+const QRCode = require('qrcode');
 
 const app = express();
 const PORT = 3000;
@@ -38,6 +38,28 @@ app.get('/api/destinos/:idDepto', async (req, res) => {
         res.json(result.recordset);
     } catch (err) {
         res.status(500).send("No pudimos traer los destinos.");
+    }
+});
+
+// --- NUEVA RUTA: BUSCADOR INTELIGENTE ---
+app.get('/api/buscar-destinos', async (req, res) => {
+    try {
+        const termino = req.query.q || '';
+        const pool = await poolPromise;
+        
+        // Buscamos si la palabra aparece en el nombre del lugar O en la descripción
+        const result = await pool.request()
+            .input('termino', sql.VarChar, `%${termino}%`)
+            .query(`
+                SELECT * FROM viatrosApp.dbo.Destinos 
+                WHERE nombre_lugar LIKE @termino 
+                   OR descripcion LIKE @termino
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Error en la brújula de búsqueda.");
     }
 });
 
@@ -83,6 +105,42 @@ app.post('/api/login', async (req, res) => {
             res.status(401).json({ exito: false, mensaje: 'Datos incorrectos.' });
         }
     } catch (err) {
+        res.status(500).json({ exito: false });
+    }
+});
+
+// --- RESEÑAS (Efecto TripAdvisor) ---
+app.get('/api/resenas/:idDestino', async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.idDestino)
+            .query(`
+                SELECT r.calificacion, r.comentario, r.fecha, u.nombre 
+                FROM viatrosApp.dbo.Resenas r
+                INNER JOIN viatrosApp.dbo.Usuarios u ON r.id_usuario = u.id_usuario
+                WHERE r.id_destino = @id
+                ORDER BY r.fecha DESC
+            `);
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).send("Error al cargar reseñas.");
+    }
+});
+
+app.post('/api/resenas', async (req, res) => {
+    try {
+        const { id_usuario, id_destino, calificacion, comentario } = req.body;
+        const pool = await poolPromise;
+        await pool.request()
+            .input('id_u', sql.Int, id_usuario)
+            .input('id_d', sql.Int, id_destino)
+            .input('cal', sql.Int, calificacion)
+            .input('com', sql.VarChar, comentario)
+            .query('INSERT INTO viatrosApp.dbo.Resenas (id_usuario, id_destino, calificacion, comentario) VALUES (@id_u, @id_d, @cal, @com)');
+        res.json({ exito: true });
+    } catch (err) {
+        console.log(err);
         res.status(500).json({ exito: false });
     }
 });
@@ -137,7 +195,8 @@ app.post('/api/reservar', async (req, res) => {
 
             await transaction.commit();
             
-            const doc = new PDFDocument({ margin: 50 });
+            // --- FABRICAR EL PDF PROFESIONAL EN MEMORIA ---
+            const doc = new PDFDocument({ margin: 50, size: 'A4' });
             let buffers = [];
             
             doc.on('data', buffers.push.bind(buffers));
@@ -157,8 +216,8 @@ app.post('/api/reservar', async (req, res) => {
                     let mailOptions = {
                         from: `"Viatros, S. A." <${process.env.EMAIL_USER}>`,
                         to: cliente.email,
-                        subject: '🎫 ¡Tu reserva está confirmada! - Viatros, S.A.',
-                        text: `Hola ${cliente.nombre},\n\nGracias por reservar con nosotros. Adjunto encontrarás tu pase de abordar para tu viaje a ${destino.nombre_lugar}.\n\n¡Que disfrutes tu aventura!\n\nAtte. El equipo de Viatros.`,
+                        subject: '🎫 Tu Pase de Abordar Oficial - Viatros, S.A.',
+                        text: `Hola ${cliente.nombre},\n\nTu viaje a ${destino.nombre_lugar} está confirmado. Adjunto encontrarás tu boleto con código QR.\n\nAtte. El equipo de Viatros.`,
                         attachments: [
                             {
                                 filename: `Boleto_Viatros_${id_destino}.pdf`,
@@ -175,23 +234,66 @@ app.post('/api/reservar', async (req, res) => {
                 }
             });
 
-            doc.fontSize(25).fillColor('#EAB308').text('VIATROS, S. A.', { align: 'center' }); 
-            doc.moveDown();
-            doc.fontSize(16).fillColor('#000000').text('Pase de Abordar Oficial', { align: 'center' });
-            doc.moveDown();
-            doc.fontSize(12).text(`Pasajero: ${cliente.nombre}`);
-            doc.text(`DPI: ${dpi}`);
-            doc.text(`Teléfono: ${telefono}`);
-            doc.moveDown();
-            doc.text(`Destino: ${destino.nombre_lugar}`);
-            doc.text(`Fecha del viaje: ${fecha_viaje}`);
-            doc.text(`Cupos reservados: ${cupos}`);
-            doc.text(`Paquete: ${tipo_paquete}`);
-            doc.moveDown();
-            doc.fontSize(14).text(`Total Pagado: Q${precio_total}`, { underline: true });
-            doc.moveDown(2);
-            doc.fontSize(10).fillColor('gray').text('Este boleto es generado automáticamente. Por favor, preséntalo el día de tu viaje.', { align: 'center' });
+            // --- DISEÑO DEL PDF ---
+            const datosQR = `VIATROS-RESERVA | Cliente: ${dpi} | Destino: ${id_destino} | Fecha: ${fecha_viaje}`;
+            const qrImage = await QRCode.toDataURL(datosQR); 
+
+            doc.fillColor('#003366').fontSize(28).font('Helvetica-Bold').text('VIATROS, S. A.', 50, 50);
+            doc.fontSize(10).fillColor('#ff8c00').text('El viaje de tu vida', 50, 80);
+
+            doc.fontSize(10).fillColor('#333333').font('Helvetica')
+               .text('Pase de abordar No.:', 350, 50, { align: 'right' })
+               .font('Helvetica-Bold').text(`VTR-${Math.floor(Math.random() * 10000)}`, 400, 65, { align: 'right' }) 
+               .font('Helvetica').text('Fecha de emisión:', 350, 85, { align: 'right' })
+               .text(new Date().toLocaleDateString('es-GT'), 400, 100, { align: 'right' });
+
+            doc.moveDown(3);
+
+            const startY = 150;
             
+            // Columna Izquierda: Cliente
+            doc.fontSize(12).fillColor('#003366').font('Helvetica-Bold').text('Datos del Pasajero', 50, startY);
+            doc.fontSize(10).fillColor('#333333').font('Helvetica')
+               .text(`Nombre: ${cliente.nombre}`, 50, startY + 20)
+               .text(`DPI: ${dpi}`, 50, startY + 35)
+               .text(`Teléfono: ${telefono}`, 50, startY + 50);
+
+            // Columna Derecha: Viaje
+            doc.fontSize(12).fillColor('#003366').font('Helvetica-Bold').text('Detalles del Viaje', 300, startY);
+            doc.fontSize(10).fillColor('#333333').font('Helvetica')
+               .text(`Destino: ${destino.nombre_lugar}`, 300, startY + 20)
+               .text(`Fecha: ${fecha_viaje}`, 300, startY + 35)
+               .text(`Paquete: ${tipo_paquete}`, 300, startY + 50);
+
+            // Tabla de Detalles (Barra Azul)
+            const tableY = 250;
+            doc.rect(50, tableY, 495, 25).fill('#003366'); 
+            
+            doc.fillColor('#ffffff').fontSize(10).font('Helvetica-Bold')
+               .text('DESCRIPCIÓN', 60, tableY + 8)
+               .text('CUPOS', 350, tableY + 8)
+               .text('TOTAL', 450, tableY + 8);
+
+            doc.fillColor('#333333').font('Helvetica')
+               .text(`Aventura en ${destino.nombre_lugar} (${tipo_paquete})`, 60, tableY + 40)
+               .text(`${cupos}`, 350, tableY + 40)
+               .text(`Q ${precio_total}.00`, 450, tableY + 40);
+
+            doc.moveTo(300, tableY + 70).lineTo(545, tableY + 70).lineWidth(1).stroke('#eeeeee');
+
+            doc.fontSize(12).font('Helvetica-Bold').fillColor('#333333').text('Total Pagado:', 320, tableY + 90);
+            doc.fontSize(14).fillColor('#ff8c00').text(`Q ${precio_total}.00`, 450, tableY + 88);
+
+            doc.image(qrImage, 50, tableY + 120, { fit: [100, 100] }); 
+            
+            doc.fontSize(12).fillColor('#003366').font('Helvetica-Bold').text('Instrucciones de Abordaje', 160, tableY + 130);
+            doc.fontSize(9).fillColor('#555555').font('Helvetica')
+               .text('1. Presenta este código QR desde tu celular al momento de subir al transporte.', 160, tableY + 150)
+               .text('2. Lleva tu DPI original en mano.', 160, tableY + 165)
+               .text('3. Preséntate 15 minutos antes de la hora de salida.', 160, tableY + 180);
+
+            doc.fontSize(8).fillColor('#aaaaaa').text('Este documento es un comprobante oficial generado electrónicamente por Viatros, S.A.', 50, 700, { align: 'center' });
+
             doc.end(); 
 
         } catch (err) {
@@ -203,13 +305,14 @@ app.post('/api/reservar', async (req, res) => {
     }
 });
 
+// --- RUTA DE MIS RESERVAS ---
 app.get('/api/mis-reservas/:idUsuario', async (req, res) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('id', sql.Int, req.params.idUsuario)
             .query(`
-                SELECT r.fecha_viaje, r.cupos_reservados, r.tipo_paquete, r.precio_total, d.nombre_lugar 
+                SELECT r.id_reserva, r.fecha_viaje, r.cupos_reservados, r.tipo_paquete, r.precio_total, d.nombre_lugar 
                 FROM viatrosApp.dbo.Reservas r
                 INNER JOIN viatrosApp.dbo.Destinos d ON r.id_destino = d.id_destino
                 WHERE r.id_usuario = @id
@@ -218,6 +321,89 @@ app.get('/api/mis-reservas/:idUsuario', async (req, res) => {
         res.json(result.recordset);
     } catch (err) {
         res.status(500).send("Error al cargar el perfil.");
+    }
+});
+
+// --- NUEVA RUTA: DESCARGAR BOLETO AL VUELO ---
+app.get('/api/descargar-boleto/:idReserva', async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        
+        const result = await pool.request()
+            .input('id', sql.Int, req.params.idReserva)
+            .query(`
+                SELECT r.*, u.nombre, u.email, d.nombre_lugar 
+                FROM viatrosApp.dbo.Reservas r
+                INNER JOIN viatrosApp.dbo.Usuarios u ON r.id_usuario = u.id_usuario
+                INNER JOIN viatrosApp.dbo.Destinos d ON r.id_destino = d.id_destino
+                WHERE r.id_reserva = @id
+            `);
+
+        if (result.recordset.length === 0) return res.status(404).send("Reserva no encontrada");
+        const reserva = result.recordset[0];
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Pase_Abordar_Viatros_${reserva.id_reserva}.pdf"`);
+
+        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        doc.pipe(res); 
+
+        const fechaFormateada = new Date(reserva.fecha_viaje).toLocaleDateString('es-GT');
+        const datosQR = `VIATROS-RESERVA | Cliente: ${reserva.dpi_cliente} | Viaje: ${reserva.id_reserva} | Fecha: ${fechaFormateada}`;
+        const qrImage = await QRCode.toDataURL(datosQR); 
+
+        doc.fillColor('#003366').fontSize(28).font('Helvetica-Bold').text('VIATROS, S. A.', 50, 50);
+        doc.fontSize(10).fillColor('#ff8c00').text('El viaje de tu vida', 50, 80);
+
+        doc.fontSize(10).fillColor('#333333').font('Helvetica')
+           .text('Pase de abordar No.:', 350, 50, { align: 'right' })
+           .font('Helvetica-Bold').text(`VTR-00${reserva.id_reserva}`, 400, 65, { align: 'right' })
+           .font('Helvetica').text('Fecha de viaje:', 350, 85, { align: 'right' })
+           .text(fechaFormateada, 400, 100, { align: 'right' });
+        doc.moveDown(3);
+
+        const startY = 150;
+        doc.fontSize(12).fillColor('#003366').font('Helvetica-Bold').text('Datos del Pasajero', 50, startY);
+        doc.fontSize(10).fillColor('#333333').font('Helvetica')
+           .text(`Nombre: ${reserva.nombre}`, 50, startY + 20)
+           .text(`DPI: ${reserva.dpi_cliente}`, 50, startY + 35)
+           .text(`Teléfono: ${reserva.telefono_cliente}`, 50, startY + 50);
+
+        doc.fontSize(12).fillColor('#003366').font('Helvetica-Bold').text('Detalles del Viaje', 300, startY);
+        doc.fontSize(10).fillColor('#333333').font('Helvetica')
+           .text(`Destino: ${reserva.nombre_lugar}`, 300, startY + 20)
+           .text(`Paquete: ${reserva.tipo_paquete}`, 300, startY + 35)
+           .text(`Cupos: ${reserva.cupos_reservados} personas`, 300, startY + 50);
+
+        const tableY = 250;
+        doc.rect(50, tableY, 495, 25).fill('#003366'); 
+        doc.fillColor('#ffffff').fontSize(10).font('Helvetica-Bold')
+           .text('DESCRIPCIÓN', 60, tableY + 8).text('ESTADO', 350, tableY + 8).text('TOTAL', 450, tableY + 8);
+
+        doc.fillColor('#333333').font('Helvetica')
+           .text(`Aventura en ${reserva.nombre_lugar}`, 60, tableY + 40)
+           .text(`PAGADO`, 350, tableY + 40)
+           .text(`Q ${reserva.precio_total}.00`, 450, tableY + 40);
+
+        doc.moveTo(300, tableY + 70).lineTo(545, tableY + 70).lineWidth(1).stroke('#eeeeee');
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#333333').text('Total Pagado:', 320, tableY + 90);
+        doc.fontSize(14).fillColor('#ff8c00').text(`Q ${reserva.precio_total}.00`, 450, tableY + 88);
+
+        doc.image(qrImage, 50, tableY + 120, { fit: [100, 100] }); 
+        
+        doc.fontSize(12).fillColor('#003366').font('Helvetica-Bold').text('Instrucciones de Abordaje', 160, tableY + 130);
+        doc.fontSize(9).fillColor('#555555').font('Helvetica')
+           .text('1. Presenta este código QR desde tu celular al momento de subir al transporte.', 160, tableY + 150)
+           .text('2. Lleva tu DPI original en mano.', 160, tableY + 165)
+           .text('3. Preséntate 15 minutos antes de la hora de salida.', 160, tableY + 180);
+
+        doc.fontSize(8).fillColor('#aaaaaa').text('Documento oficial generado electrónicamente por Viatros, S.A.', 50, 700, { align: 'center' });
+
+        doc.end();
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Error al generar el boleto.");
     }
 });
 

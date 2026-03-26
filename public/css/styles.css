@@ -170,3 +170,48 @@ body {
 .oculto {
     display: none !important;
 }
+
+/* --- FIX PARA LA ANIMACIÓN DEL MODAL DE RESEÑAS --- */
+@keyframes popModal {
+    0% { opacity: 0; transform: translate(-50%, -45%) scale(0.95); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+#modal-resenas {
+    /* El !important evita que la animación del glass-container lo arruine */
+    animation: popModal 0.4s ease-out !important; 
+}
+
+/* --- GALERÍA INMERSIVA --- */
+#modal-galeria {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 10, 20, 0.95); /* Azul muy oscuro casi negro */
+    z-index: 3000;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+}
+
+.galeria-contenedor {
+    position: relative; width: 90%; max-width: 900px; text-align: center;
+}
+
+#imagen-galeria {
+    width: 100%; max-height: 70vh; object-fit: contain; border-radius: 10px;
+    box-shadow: 0 15px 40px rgba(234, 179, 8, 0.2); /* Sombra naranja */
+    transition: opacity 0.2s ease-in-out;
+}
+
+.btn-galeria {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255,255,255,0.3);
+    font-size: 2rem; padding: 10px 20px; cursor: pointer; border-radius: 50%;
+    transition: all 0.3s ease; backdrop-filter: blur(5px);
+}
+
+.btn-galeria:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-50%) scale(1.1); }
+.btn-galeria.izq { left: -25px; }
+.btn-galeria.der { right: -25px; }
+
+#titulo-galeria { color: var(--accent); margin-bottom: 20px; font-size: 2rem; letter-spacing: 1px; }
+
+/* Para que la manita avise que la foto de la tarjeta se puede clickear */
+.foto-destino:hover { opacity: 0.9; }
