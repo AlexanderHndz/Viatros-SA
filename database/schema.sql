@@ -42,3 +42,12 @@ CREATE TABLE Reservas (
     dpi_cliente VARCHAR(20) NOT NULL,
     telefono_cliente VARCHAR(15) NOT NULL
 );
+
+CREATE TABLE Resenas (
+    id_resena INT PRIMARY KEY IDENTITY(1,1),
+    id_destino INT FOREIGN KEY REFERENCES Destinos(id_destino),
+    id_usuario INT FOREIGN KEY REFERENCES Usuarios(id_usuario),
+    calificacion INT CHECK (calificacion >= 1 AND calificacion <= 5),
+    comentario TEXT,
+    fecha DATETIME DEFAULT GETDATE()
+);
