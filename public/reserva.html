@@ -1,108 +1,347 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Completar Reserva | Viatros, S. A.</title>
+
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
+
     <link rel="stylesheet" href="css/styles.css">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+        }
+
+        main {
+            flex: 1;
+        }
+
+        .fila-inputs {
+            display: flex;
+            gap: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .fila-inputs {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
+
+        .input-bloqueado {
+            background: #eef2f5 !important;
+            color: #555;
+            cursor: not-allowed;
+            border-color: #d1d9e6;
+            font-weight: bold;
+        }
+
+        .toast-elegante {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 380px;
+            max-width: calc(100vw - 40px);
+            background: linear-gradient(135deg, var(--primary) 0%, #001f3f 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-left: 5px solid var(--accent);
+            transform: translateX(150vw);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 480px) {
+            .toast-elegante {
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 15px;
+                gap: 12px;
+            }
+
+            .toast-elegante strong {
+                font-size: 1rem !important;
+            }
+
+            .toast-elegante span {
+                font-size: 0.85rem !important;
+            }
+        }
+    </style>
 </head>
+
 <body>
     <nav class="navbar">
-        <div class="logo">Viatros, S. A.</div>
-        <a href="catalogo.html">⬅ Volver al Catálogo</a>
+        <div class="logo">
+            <a href="index.html">Viatros, S. A.</a>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <a href="catalogo.html" style="margin-right: 15px;">⬅ Volver al Catálogo</a>
+            <a href="perfil.html" id="nav-perfil"
+                style="display:none; color: var(--accent); font-weight: bold; background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px; text-decoration: none;">👤
+                Mi Perfil</a>
+        </div>
     </nav>
 
-    <div class="glass-container" style="max-width: 600px;">
-        <h2>Complete su Reserva</h2>
-        <h3 id="nombre-destino-reserva" style="color: var(--primary);">Cargando destino...</h3>
-        
-        <div style="background: #e0eafc; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-            <p style="margin: 0; font-size: 1.2rem;">Total a Pagar: <strong id="precio-display" style="color: var(--accent); font-size: 1.5rem;">Q0.00</strong></p>
+    <main>
+        <div class="glass-container"
+            style="max-width: 650px; margin: 40px auto; padding: 35px; box-shadow: 0 15px 40px rgba(0,0,0,0.1);">
+            <h2 style="margin-top: 0; text-align: center;">Boleto de Abordaje</h2>
+            <h3 id="nombre-destino-reserva" style="color: var(--primary); text-align: center; margin-bottom: 25px;">
+                Cargando destino...</h3>
+
+            <div
+                style="background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--accent);">
+                <div>
+                    <span style="font-size: 0.9rem; color: #555; text-transform: uppercase; font-weight: bold;">Total a
+                        Pagar</span>
+                </div>
+                <div>
+                    <strong id="precio-display" style="color: var(--primary); font-size: 1.8rem;">Q0.00</strong>
+                </div>
+            </div>
+
+            <form id="form-reserva" onsubmit="procesarReserva(event)">
+
+                <div class="input-group">
+                    <label style="color: var(--accent);">📅 Fecha de Viaje (Fija)</label>
+                    <input type="text" id="res-fecha-display" class="input-bloqueado" readonly
+                        placeholder="Cargando fecha...">
+                    <input type="hidden" id="res-fecha-oculta">
+                </div>
+
+                <div class="fila-inputs">
+                    <div class="input-group" style="flex: 1;">
+                        <label>Nombre del Titular</label>
+                        <input type="text" id="res-nombre" class="input-bloqueado" required readonly>
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="res-email" class="input-bloqueado" required readonly>
+                    </div>
+                </div>
+
+                <div class="fila-inputs">
+                    <div class="input-group" style="flex: 1;">
+                        <label>Teléfono <span style="font-size: 0.8rem; color:#888;">(8 dígitos)</span></label>
+                        <input type="tel" id="res-tel" placeholder="Ej. 55554444" required maxlength="8" pattern="\d{8}"
+                            oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                            title="El teléfono debe tener 8 números">
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>DPI <span style="font-size: 0.8rem; color:#888;">(13 dígitos)</span></label>
+                        <input type="text" id="res-dpi" placeholder="Ej. 1234567890101" required minlength="13"
+                            maxlength="13" pattern="\d{13}" oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                            title="El DPI debe contener exactamente 13 números">
+                    </div>
+                </div>
+
+                <div class="input-group"
+                    style="border: 2px dashed #ccc; padding: 20px; border-radius: 8px; background: #fafafa; text-align: center;">
+                    <label style="color: #d9534f; font-weight: bold; margin-bottom: 10px; display: block;">📄
+                        Antecedentes (Penales o Policiacos)</label>
+                    <input type="file" id="res-pdf" accept=".pdf" required style="margin: 0 auto;">
+                    <small style="color: #666; display: block; margin-top: 8px;">Requisito obligatorio de seguridad
+                        (Formato PDF).</small>
+                </div>
+
+                <div class="fila-inputs" style="margin-top: 20px;">
+                    <div class="input-group" style="flex: 2;">
+                        <label>Tipo de Paquete</label>
+                        <select id="res-paquete" onchange="calcularPrecio()"
+                            style="width: 100%; padding: 12px; border-radius: 8px; cursor: pointer;">
+                            <option value="Eco">Mochilero / Económico (Bus)</option>
+                            <option value="Premium">Premium / Confort (Privado/Vuelo)</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="flex: 1;">
+                        <label>Cupos</label>
+                        <input type="number" id="res-cupos" min="1" max="10" value="1"
+                            oninput="validarCupos(this); calcularPrecio()" required>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; padding-top: 25px; border-top: 2px solid #eee;">
+                    <h3 style="color: var(--primary); margin-top: 0; text-align: center;">Método de Pago</h3>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap;">
+                        <button type="button" id="btn-tarjeta" class="btn-primary"
+                            style="flex: 1; min-width: 120px; border-radius: 8px; padding: 12px;"
+                            onclick="cambiarMetodo('tarjeta')">💳 Tarjeta</button>
+                        <button type="button" id="btn-transferencia" class="btn-primary"
+                            style="flex: 1; min-width: 120px; border-radius: 8px; background: #555; padding: 12px;"
+                            onclick="cambiarMetodo('transferencia')">🏦 Depósito</button>
+                        <button type="button" id="btn-efectivo" class="btn-primary"
+                            style="flex: 1; min-width: 120px; border-radius: 8px; background: #555; padding: 12px;"
+                            onclick="cambiarMetodo('efectivo')">💵 Efectivo</button>
+                    </div>
+
+                    <div id="pago-tarjeta" class="metodo-pago">
+                        <label style="font-weight: bold; color: #444;">Número de Tarjeta <span id="logo-tarjeta"
+                                style="float: right; font-weight: bold; color: var(--accent);"></span></label>
+                        <input type="text" id="num-tarjeta" placeholder="0000 0000 0000 0000" maxlength="19"
+                            onkeyup="validarTarjetaVisual()"
+                            style="width: 100%; padding: 12px; margin: 8px 0 15px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 1.1rem; letter-spacing: 2px; box-sizing: border-box;">
+                        <p id="error-tarjeta" style="color: red; font-size: 0.85rem; margin-top: -10px; display: none;">
+                            ❌ Número de tarjeta inválido</p>
+
+                        <div class="fila-inputs">
+                            <div style="flex: 1;">
+                                <label style="font-weight: bold; color: #444;">Vencimiento</label>
+                                <input type="text" id="vencimiento-tarjeta" placeholder="MM/YY" maxlength="5"
+                                    oninput="formatearVencimiento(this)"
+                                    style="width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-weight: bold; color: #444;">CVV</label>
+                                <input type="password" id="cvv-tarjeta" placeholder="123" maxlength="3"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                    style="width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box;">
+                            </div>
+                        </div>
+
+                        <label style="font-weight: bold; color: #444; margin-top: 15px; display: block;">Cuotas</label>
+                        <select id="visacuotas"
+                            style="width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; box-sizing: border-box;">
+                            <option value="1">Pago de contado</option>
+                            <option value="3">3 Cuotas | Sin recargo</option>
+                            <option value="6">6 Cuotas | Sin recargo</option>
+                            <option value="10">10 Cuotas | Sin recargo</option>
+                        </select>
+                    </div>
+
+                    <div id="pago-transferencia" class="metodo-pago" style="display: none;">
+                        <div
+                            style="background: #e3f2fd; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); margin-bottom: 20px;">
+                            <p style="margin: 0; color: #333; line-height: 1.6;"><strong>Banco Industrial:</strong>
+                                Cuenta Monetaria<br>
+                                <strong>No:</strong> 123-456789-0<br>
+                                <strong>A nombre de:</strong> Viatros, S.A.
+                            </p>
+                        </div>
+                        <label style="font-weight: bold; color: #444;">Sube tu comprobante (PDF o Imagen)</label>
+                        <input type="file" id="comprobante-pago" accept=".pdf, image/*"
+                            style="width: 100%; padding: 12px; margin-top: 8px; border: 2px dashed #999; border-radius: 8px; background: white; box-sizing: border-box;">
+                    </div>
+
+                    <div id="pago-efectivo" class="metodo-pago" style="display: none;">
+                        <div style="background: #fdfdfd; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
+                            <p style="color: #555; margin-top: 0;">Reserva tu cupo hoy y paga en efectivo en cualquiera
+                                de nuestras agencias en las próximas <strong>48 horas</strong>:</p>
+                            <ul style="color: #444; line-height: 1.8; text-align: left;">
+                                <li>📍 <strong>Miraflores:</strong> Zona 11, 4to Nivel, Of. 409.</li>
+                                <li>📍 <strong>Oakland Mall:</strong> Zona 10, 3er Nivel, Of. 309.</li>
+                            </ul>
+                            <p style="font-size: 0.85rem; color: var(--accent); font-weight: bold; margin-bottom: 0;">*
+                                Tu boleto se emitirá temporalmente con estado "Pendiente".</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top: 30px; padding: 15px; background: #f9f9f9; border-left: 4px solid var(--accent); border-radius: 5px; margin-bottom: 25px;">
+                    <label
+                        style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 0.9rem; color: #444;">
+                        <input type="checkbox" id="acepta-politicas" required
+                            style="margin-top: 4px; width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer;">
+                        <span style="line-height: 1.5;">
+                            He leído y acepto las <a href="nosotros.html#politicas" target="_blank"
+                                style="color: var(--accent); font-weight: bold; text-decoration: underline;">Políticas
+                                de Cancelación</a> y los <a href="nosotros.html#privacidad" target="_blank"
+                                style="color: var(--accent); font-weight: bold; text-decoration: underline;">Términos de
+                                Seguridad</a>. Entiendo que debo presentar mis antecedentes y DPI físico para abordar.
+                        </span>
+                    </label>
+                </div>
+
+                <button type="submit" id="btn-submit-reserva" class="btn-primary btn-accent"
+                    style="width: 100%; padding: 15px; font-size: 1.1rem;">Confirmar y Generar Boleto</button>
+            </form>
         </div>
+    </main>
 
-        <form id="form-reserva" onsubmit="procesarReserva(event)">
-            <div class="input-group">
-                <label>Nombre del Titular</label>
-                <input type="text" id="res-nombre" required readonly style="background: #f0f0f0;">
-            </div>
-            <div class="input-group">
-                <label>Correo Electrónico</label>
-                <input type="email" id="res-email" required readonly style="background: #f0f0f0;">
-            </div>
-            
-            <div style="display: flex; gap: 15px;">
-                <div class="input-group" style="flex: 1;">
-                    <label>Teléfono</label>
-                    <input type="tel" id="res-tel" placeholder="Ej. 55554444" required>
-                </div>
-                <div class="input-group" style="flex: 1;">
-                    <label>DPI (13 dígitos)</label>
-                    <input type="text" id="res-dpi" placeholder="Ej. 1234567890101" minlength="13" maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '')" title="Debe contener exactamente 13 números" required>
-                </div>
-            </div>
-
-            <div class="input-group" style="border: 1px dashed #ccc; padding: 15px; border-radius: 8px; background: #fafafa;">
-                <label style="color: #d9534f;">📄 Subir Antecedentes (Penales y Policiacos en PDF)</label>
-                <input type="file" id="res-pdf" accept=".pdf" required>
-                <small style="color: #666;">Requisito obligatorio de seguridad interna.</small>
-            </div>
-
-            <div style="display: flex; gap: 15px; margin-top: 20px;">
-                <div class="input-group" style="flex: 2;">
-                    <label>Tipo de Paquete</label>
-                    <select id="res-paquete" onchange="calcularPrecio()" style="width: 100%; padding: 12px; border-radius: 8px;">
-                        <option value="Eco">Mochilero / Económico (Bus)</option>
-                        <option value="Premium">Premium / Confort (Privado/Vuelo)</option>
-                    </select>
-                </div>
-                <div class="input-group" style="flex: 1;">
-                    <label>Cupos</label>
-                    <input type="number" id="res-cupos" min="1" max="10" value="1" onchange="calcularPrecio()" required>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>Fecha de Viaje</label>
-                <input type="date" id="res-fecha" required>
-            </div>
-
-            <button type="submit" class="btn-primary btn-accent">Confirmar Reserva Oficial</button>
-        </form>
+    <div id="toast-notificacion" class="toast-elegante">
+        <span id="toast-icono"
+            style="font-size: 1.5rem; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 50%; flex-shrink: 0;">✅</span>
+        <div style="display: flex; flex-direction: column;">
+            <strong id="toast-titulo"
+                style="font-size: 1.05rem; margin-bottom: 2px; letter-spacing: 0.5px;">Mensaje</strong>
+            <span id="toast-mensaje" style="font-size: 0.9rem; opacity: 0.9; line-height: 1.3;">Descripción aquí.</span>
+        </div>
     </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
 
     <script>
         let precioMochilero = 0;
         let precioPremium = 0;
         let idDestinoActual = 0;
+        let metodoPagoActual = 'tarjeta';
         const usuarioLogueado = JSON.parse(localStorage.getItem('usuarioViatros'));
 
         window.onload = async () => {
             if (!usuarioLogueado) { window.location.href = 'login.html'; return; }
-            
+
+            if (window.innerWidth > 600) document.getElementById('nav-perfil').style.display = 'inline-block';
+
             document.getElementById('res-nombre').value = usuarioLogueado.nombre;
             document.getElementById('res-email').value = usuarioLogueado.email;
 
             const urlParams = new URLSearchParams(window.location.search);
-            idDestinoActual = urlParams.get('destino');
+            idDestinoActual = urlParams.get('id');
 
-            if (idDestinoActual) {
+            if (!idDestinoActual) {
+                window.location.href = 'catalogo.html';
+                return;
+            }
+
+            try {
                 const res = await fetch(`/api/destino-individual/${idDestinoActual}`);
                 const destino = await res.json();
-                
-                document.getElementById('nombre-destino-reserva').innerText = destino.nombre_lugar;
-                
+
+                document.getElementById('nombre-destino-reserva').innerText = "Ruta: " + destino.nombre_lugar;
+
                 const numeros = destino.presupuesto_estimado.match(/\d+(?:,\d+)?/g).map(n => parseInt(n.replace(',', '')));
                 precioMochilero = numeros[0];
+                precioPremium = numeros.length > 1 ? numeros[1] : precioMochilero * 1.5;
 
-                precioPremium = numeros.length > 1 ? numeros[1] : precioMochilero * 1.5; 
+                if (destino.fecha_viaje) {
+                    const fechaCruda = new Date(destino.fecha_viaje);
+                    fechaCruda.setMinutes(fechaCruda.getMinutes() + fechaCruda.getTimezoneOffset());
 
-                const mañana = new Date();
-                mañana.setDate(mañana.getDate() + 1);
-                document.getElementById('res-fecha').min = mañana.toISOString().split("T")[0];
+                    document.getElementById('res-fecha-display').value = fechaCruda.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    document.getElementById('res-fecha-oculta').value = fechaCruda.toISOString().split("T")[0];
+                } else {
+                    document.getElementById('res-fecha-display').value = "Fecha por confirmar";
+                    document.getElementById('res-fecha-oculta').value = "2026-12-31";
+                }
 
                 calcularPrecio();
+            } catch (e) {
+                notificarUsuario("Error", "No pudimos cargar la información del viaje.", "🔌");
             }
         };
+
+        function validarCupos(input) {
+            let valor = parseInt(input.value);
+            if (isNaN(valor) || valor < 1) input.value = 1;
+            if (valor > 10) input.value = 10;
+        }
 
         function calcularPrecio() {
             const paquete = document.getElementById('res-paquete').value;
@@ -113,20 +352,116 @@
             return total;
         }
 
+        function cambiarMetodo(metodo) {
+            metodoPagoActual = metodo;
+            document.getElementById('pago-tarjeta').style.display = 'none';
+            document.getElementById('pago-transferencia').style.display = 'none';
+            document.getElementById('pago-efectivo').style.display = 'none';
+
+            document.getElementById('btn-tarjeta').style.background = '#555';
+            document.getElementById('btn-transferencia').style.background = '#555';
+            document.getElementById('btn-efectivo').style.background = '#555';
+
+            document.getElementById(`pago-${metodo}`).style.display = 'block';
+            document.getElementById(`btn-${metodo}`).style.background = 'var(--primary)';
+        }
+
+        function validarTarjetaVisual() {
+            let input = document.getElementById('num-tarjeta');
+            let logo = document.getElementById('logo-tarjeta');
+            let numero = input.value.replace(/\s+/g, '');
+
+            if (numero.length > 0) input.value = numero.match(/.{1,4}/g).join(' ');
+
+            if (numero.startsWith('4')) {
+                logo.innerText = '🟦 VISA'; logo.style.color = '#1a1f71';
+            } else if (numero.startsWith('5')) {
+                logo.innerText = '🟧 MASTERCARD'; logo.style.color = '#eb001b';
+            } else if (numero.length > 0) {
+                logo.innerText = '💳 OTRA'; logo.style.color = '#888';
+            } else {
+                logo.innerText = '';
+            }
+
+            if (numero.length >= 15) {
+                if (esTarjetaValidaLuhn(numero)) {
+                    document.getElementById('error-tarjeta').style.display = 'none';
+                    input.style.borderColor = 'green';
+                } else {
+                    document.getElementById('error-tarjeta').style.display = 'block';
+                    input.style.borderColor = 'red';
+                }
+            } else {
+                document.getElementById('error-tarjeta').style.display = 'none';
+                input.style.borderColor = '#ccc';
+            }
+        }
+
+        function esTarjetaValidaLuhn(numero) {
+            let suma = 0; let esPar = false;
+            for (let i = numero.length - 1; i >= 0; i--) {
+                let digito = parseInt(numero.charAt(i));
+                if (esPar) { digito *= 2; if (digito > 9) digito -= 9; }
+                suma += digito; esPar = !esPar;
+            }
+            return (suma % 10 === 0);
+        }
+
+        function formatearVencimiento(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length >= 2) {
+                valor = valor.substring(0, 2) + '/' + valor.substring(2, 4);
+            }
+            input.value = valor.substring(0, 5);
+        }
+
         async function procesarReserva(e) {
             e.preventDefault();
 
-            alert("✅ Archivo PDF verificado y escaneado con éxito por nuestro sistema de seguridad.");
+            const btnSubmit = document.getElementById('btn-submit-reserva');
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = "⏳ Procesando Reserva...";
+
+            if (metodoPagoActual === 'tarjeta') {
+                let numTarjeta = document.getElementById('num-tarjeta').value.replace(/\s+/g, '');
+                let vencimiento = document.getElementById('vencimiento-tarjeta').value;
+                let cvv = document.getElementById('cvv-tarjeta').value;
+
+                if (!esTarjetaValidaLuhn(numTarjeta) || numTarjeta.length < 15) {
+                    notificarUsuario("Tarjeta Inválida", "Verifica el número de tu tarjeta.", "💳");
+                    btnSubmit.disabled = false; btnSubmit.innerText = "Confirmar y Generar Boleto";
+                    return;
+                }
+                if (!vencimiento || !cvv) {
+                    notificarUsuario("Datos Incompletos", "Completa el vencimiento y CVV.", "💳");
+                    btnSubmit.disabled = false; btnSubmit.innerText = "Confirmar y Generar Boleto";
+                    return;
+                }
+            } else if (metodoPagoActual === 'transferencia') {
+                let comprobante = document.getElementById('comprobante-pago').value;
+                if (!comprobante) {
+                    notificarUsuario("Falta Comprobante", "Debes subir la foto de tu depósito.", "📄");
+                    btnSubmit.disabled = false; btnSubmit.innerText = "Confirmar y Generar Boleto";
+                    return;
+                }
+            }
+
+            let cuotasSeleccionadas = 1;
+            if (metodoPagoActual === 'tarjeta') {
+                cuotasSeleccionadas = parseInt(document.getElementById('visacuotas').value);
+            }
 
             const dataReserva = {
                 id_usuario: usuarioLogueado.id_usuario,
                 id_destino: idDestinoActual,
-                fecha_viaje: document.getElementById('res-fecha').value,
+                fecha_viaje: document.getElementById('res-fecha-oculta').value,
                 cupos: document.getElementById('res-cupos').value,
                 tipo_paquete: document.getElementById('res-paquete').value,
                 precio_total: calcularPrecio(),
                 dpi: document.getElementById('res-dpi').value,
-                telefono: document.getElementById('res-tel').value
+                telefono: document.getElementById('res-tel').value,
+                metodo_pago: metodoPagoActual,
+                cuotas: cuotasSeleccionadas
             };
 
             try {
@@ -138,16 +473,65 @@
                 const respuesta = await peticion.json();
 
                 if (respuesta.exito) {
-                    alert("🎉 ¡Reserva confirmada! Gracias por elegir Viatros, S. A.");
-                    window.location.href = 'perfil.html'; 
+                    notificarUsuario("¡Reserva Exitosa!", "Tu boleto ha sido generado. Redirigiendo...", "🎉");
+                    setTimeout(() => { window.location.href = 'perfil.html'; }, 2000);
                 } else {
-                    alert("Error: " + respuesta.mensaje);
+                    notificarUsuario("Error al Reservar", respuesta.mensaje, "❌");
+                    btnSubmit.disabled = false; btnSubmit.innerText = "Confirmar y Generar Boleto";
                 }
             } catch (err) {
-                alert("Hubo un error de conexión.");
+                notificarUsuario("Error del Servidor", "Hubo un problema de conexión.", "🔌");
+                btnSubmit.disabled = false; btnSubmit.innerText = "Confirmar y Generar Boleto";
             }
         }
     </script>
-    <script src="js/auth.js"></script>
+
+    <footer
+        style="background-color: #001f3f; color: #e0e0e0; padding: 40px 20px 20px 20px; margin-top: 50px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div
+            style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px;">
+            <div>
+                <h3 style="color: white; margin-bottom: 15px; font-size: 1.5rem;">Viatros, S. A.</h3>
+                <p style="font-size: 0.9rem; line-height: 1.6; color: #aaaaaa;">
+                    Transformando la movilidad en Guatemala en una aventura inmersiva e inolvidable. Viaja seguro, viaja
+                    con los mejores.
+                </p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Contáctanos</h4>
+                <p style="font-size: 0.9rem; margin: 5px 0;">📍 Miraflores: Zona 11, 4to Nivel, Of. 409</p>
+                <p style="font-size: 0.9rem; margin: 5px 0;">📍 Oakland Mall: Zona 10, 3er Nivel, Of. 309</p>
+                <p style="font-size: 0.9rem; margin: 5px 0;">📞 +(502) 2222-3333</p>
+                <p style="font-size: 0.9rem; margin: 5px 0;">✉️ viatrossa@gmail.com</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Legal y Empresa</h4>
+                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem;">
+                    <li style="margin-bottom: 8px;"><a href="nosotros.html"
+                            style="color: #aaaaaa; text-decoration: none;">Quiénes Somos</a></li>
+                    <li style="margin-bottom: 8px;"><a href="nosotros.html#politicas"
+                            style="color: #aaaaaa; text-decoration: none;">Políticas de Reserva y Cancelación</a></li>
+                    <li style="margin-bottom: 8px;"><a href="nosotros.html#privacidad"
+                            style="color: #aaaaaa; text-decoration: none;">Términos y Aviso de Privacidad</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Síguenos</h4>
+                <div style="display: flex; gap: 15px;">
+                    <a href="https://www.facebook.com/alexander.hz.968797?locale=es_LA" target="_blank"
+                        style="color: white; text-decoration: none; font-size: 1.2rem; background: #1877F2; padding: 8px 15px; border-radius: 5px;">FB</a>
+                    <a href="https://www.instagram.com/viatrossa/" target="_blank"
+                        style="color: white; text-decoration: none; font-size: 1.2rem; background: #E1306C; padding: 8px 15px; border-radius: 5px;">IG</a>
+                    <a href="https://www.tiktok.com/@viatrossa?is_from_webapp=1&sender_device=pc" target="_blank"
+                        style="color: white; text-decoration: none; font-size: 1.2rem; background: #000000; padding: 8px 15px; border-radius: 5px; border: 1px solid #333;">TK</a>
+                </div>
+            </div>
+        </div>
+        <div
+            style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; font-size: 0.8rem; color: #777;">
+            &copy; 2026 Viatros, S. A. Todos los derechos reservados.
+        </div>
+    </footer>
 </body>
+
 </html>

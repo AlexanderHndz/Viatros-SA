@@ -1,10 +1,7 @@
-# Seguridad: No subir contraseñas de la DB ni variables de entorno
 .env
 
-# Tamaño: No subir las librerías de Node (cada quien las descarga en su PC)
 node_modules/
 
-# Basura del sistema
 .DS_Store
 Thumbs.db
 node_modules

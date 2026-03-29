@@ -1,69 +1,222 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Perfil | Viatros, S. A.</title>
+
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
+
     <link rel="stylesheet" href="css/styles.css">
+
     <style>
-        .reserva-card {
-            background: white; border-left: 5px solid var(--accent); padding: 20px;
-            margin-bottom: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            display: flex; justify-content: space-between; align-items: center;
-            transition: all 0.3s ease; /* Transición suave */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
         }
-        
-        /* Pequeña animación para el letrero de "HOY" */
+
+        main {
+            flex: 1;
+        }
+
+        .reserva-card {
+            background: white;
+            border-left: 5px solid var(--accent);
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .reserva-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .acciones-card {
+            text-align: right;
+            min-width: 160px;
+        }
+
+        @media (max-width: 600px) {
+            .reserva-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .acciones-card {
+                text-align: left;
+                width: 100%;
+                border-top: 1px solid #eee;
+                padding-top: 15px;
+            }
+
+            .btn-grupo {
+                display: flex;
+                gap: 10px;
+            }
+
+            .btn-grupo button {
+                flex: 1;
+                margin-top: 5px !important;
+            }
+        }
+
         @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .modal-peligro {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .modal-peligro-contenido {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            text-align: center;
+            border-top: 5px solid #dc3545;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .toast-elegante {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 380px;
+            max-width: calc(100vw - 40px);
+            background: linear-gradient(135deg, var(--primary) 0%, #001f3f 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-left: 5px solid var(--accent);
+            transform: translateX(150vw);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-sizing: border-box;
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar">
-        <div class="logo">Viatros, S. A.</div>
-        <div>
+        <div class="logo">
+            <a href="index.html">Viatros, S. A.</a>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
             <a href="catalogo.html">Catálogo</a>
+            <a href="#" onclick="cerrarSesion()"
+                style="font-size: 0.9rem; color: #ff9999; margin-left: 15px; text-decoration: none;">Salir ❌</a>
         </div>
     </nav>
 
-    <div class="glass-container" style="max-width: 800px;">
-        <h2 style="color: var(--primary);"><span id="perfil-nombre"></span>, este es tu itinerario</h2>
-        <p>Aquí puedes ver todos los viajes que tienes reservados con nosotros.</p>
-        
-        <div id="lista-reservas" style="margin-top: 30px; text-align: left;">
-            <p>Cargando tus aventuras...</p>
+    <main>
+        <div class="glass-container" style="max-width: 800px; margin-top: 40px; margin-bottom: 40px;">
+            <h2 style="color: var(--primary); margin-top:0;"><span id="perfil-nombre"></span>, este es tu itinerario
+            </h2>
+            <p style="color: #666;">Aquí puedes ver todos los viajes que tienes reservados con nosotros.</p>
+
+            <div id="lista-reservas" style="margin-top: 30px; text-align: left;">
+                <div style="text-align: center; padding: 40px;">
+                    <h3 style="color: var(--primary);">Buscando tus aventuras... 🧭</h3>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-confirmacion" class="modal-peligro oculto">
+        <div class="modal-peligro-contenido">
+            <h2 style="color: #dc3545; margin-top:0;">⚠️ Alerta de Cancelación</h2>
+            <p style="color: #555;">¿Estás totalmente seguro de que deseas cancelar este viaje? Esta acción <strong>NO
+                    se puede deshacer</strong> y tus cupos serán liberados inmediatamente.</p>
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button onclick="cerrarModalCancelar()" class="btn-primary" style="flex: 1; background: #666;">No,
+                    regresar</button>
+                <button id="btn-ejecutar-cancelacion" class="btn-primary"
+                    style="flex: 1; background: #dc3545; border-color: #dc3545;">Sí, cancelar viaje</button>
+            </div>
         </div>
     </div>
 
+    <div id="toast-notificacion" class="toast-elegante">
+        <span id="toast-icono"
+            style="font-size: 1.5rem; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 50%; flex-shrink: 0;">✅</span>
+        <div style="display: flex; flex-direction: column;">
+            <strong id="toast-titulo"
+                style="font-size: 1.05rem; margin-bottom: 2px; letter-spacing: 0.5px;">Mensaje</strong>
+            <span id="toast-mensaje" style="font-size: 0.9rem; opacity: 0.9; line-height: 1.3;">Descripción aquí.</span>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
+
     <script>
+        let reservaPendienteCancelar = null;
+        let metodoPagoPendiente = null;
+
         window.onload = async () => {
             const usuarioLogueado = JSON.parse(localStorage.getItem('usuarioViatros'));
             if (!usuarioLogueado) { window.location.href = 'login.html'; return; }
-            
-            document.getElementById('perfil-nombre').innerText = "Hola " + usuarioLogueado.nombre;
+
+            document.getElementById('perfil-nombre').innerText = "Hola " + usuarioLogueado.nombre.split(' ')[0];
 
             try {
                 const res = await fetch(`/api/mis-reservas/${usuarioLogueado.id_usuario}`);
                 const reservas = await res.json();
-                
+
                 const contenedor = document.getElementById('lista-reservas');
                 contenedor.innerHTML = '';
 
                 if (reservas.length === 0) {
-                    contenedor.innerHTML = '<p style="text-align:center;">Aún no tienes viajes reservados. <br><br> <a href="catalogo.html" class="btn-primary" style="display:inline-block; text-decoration:none;">Explorar Destinos</a></p>';
+                    contenedor.innerHTML = `
+                        <div style="text-align:center; background: #f9f9f9; padding: 40px; border-radius: 12px; border: 1px dashed #ccc;">
+                            <h3 style="color: var(--primary);">Tu mochila está vacía</h3>
+                            <p style="color: #666; margin-bottom: 20px;">Aún no tienes viajes reservados.</p>
+                            <a href="catalogo.html" class="btn-primary btn-accent" style="display:inline-block; text-decoration:none;">Explorar Destinos</a>
+                        </div>`;
                     return;
                 }
 
                 reservas.forEach(r => {
                     const fechaViajeObj = new Date(r.fecha_viaje);
                     const fechaHoy = new Date();
-                    // Ajuste para la zona horaria de Guatemala si es necesario, pero simplificado aquí
-                    const fechaViajeTxt = fechaViajeObj.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }); 
-                    
-                    // Calcular diferencia en días (ignorando horas)
+                    const fechaViajeTxt = fechaViajeObj.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+
                     const tiempoViaje = new Date(fechaViajeObj.getFullYear(), fechaViajeObj.getMonth(), fechaViajeObj.getDate()).getTime();
                     const tiempoHoy = new Date(fechaHoy.getFullYear(), fechaHoy.getMonth(), fechaHoy.getDate()).getTime();
                     const diferenciaTiempo = tiempoViaje - tiempoHoy;
@@ -71,40 +224,140 @@
 
                     let badgeEstado = '';
                     let estiloTarjeta = 'border-left: 5px solid var(--accent);';
+                    let btnCancelar = '';
 
                     if (diasFaltantes < 0) {
-                        badgeEstado = '<span style="background: #e0e0e0; color: #555; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">✅ Viaje Completado</span>';
-                        estiloTarjeta = 'border-left: 5px solid #ccc; opacity: 0.7;'; 
+                        badgeEstado = '<span style="background: #e0e0e0; color: #555; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold;">✅ Viaje Completado</span>';
+                        estiloTarjeta = 'border-left: 5px solid #ccc; opacity: 0.7;';
                     } else if (diasFaltantes === 0) {
-                        badgeEstado = '<span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; display: inline-block; animation: pulse 1s infinite;">🚀 ¡Tu viaje es HOY!</span>';
+                        badgeEstado = '<span style="background: #28a745; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; display: inline-block; animation: pulse 1s infinite;">🚀 ¡Tu viaje es HOY!</span>';
                     } else {
-                        badgeEstado = `<span style="background: #e3f2fd; color: var(--primary); padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">⏳ Faltan ${diasFaltantes} días</span>`;
+                        badgeEstado = `<span style="background: #e3f2fd; color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold;">⏳ Faltan ${diasFaltantes} días</span>`;
+
+                        if (diasFaltantes > 3) {
+                            btnCancelar = `
+                                <button onclick="abrirModalCancelar(${r.id_reserva}, '${r.metodo_pago}')" class="btn-primary" style="background: transparent; color: #dc3545; border: 2px solid #dc3545; margin-top: 10px; padding: 8px 12px; font-size: 0.85rem; display: block; width: 100%; border-radius: 6px; transition: 0.3s;" onmouseover="this.style.background='#dc3545'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#dc3545';">
+                                    🗑️ Cancelar Viaje
+                                </button>
+                            `;
+                        }
                     }
 
                     contenedor.innerHTML += `
                         <div class="reserva-card" style="${estiloTarjeta}">
-                            <div>
-                                <div style="margin-bottom: 8px;">${badgeEstado}</div>
-                                <h3 style="margin:0; color:var(--primary);">${r.nombre_lugar}</h3>
-                                <p style="margin: 5px 0; color: #666;">📅 Fecha: ${fechaViajeTxt}</p>
-                                <p style="margin: 0; font-size: 0.9rem;">📦 Paquete ${r.tipo_paquete} | 👥 ${r.cupos_reservados} cupos</p>
+                            <div style="flex: 1;">
+                                <div style="margin-bottom: 12px;">${badgeEstado}</div>
+                                <h3 style="margin:0 0 5px 0; color:var(--primary); font-size: 1.4rem;">${r.nombre_lugar}</h3>
+                                <p style="margin: 0; color: #555; font-size: 0.95rem;"><strong>📅 Salida:</strong> <span style="text-transform: capitalize;">${fechaViajeTxt}</span></p>
+                                <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: #666;">📦 Paquete ${r.tipo_paquete} | 👥 ${r.cupos_reservados} cupos</p>
                             </div>
-                            <div style="text-align: right;">
-                                <span style="display:block; font-size: 0.8rem; color: #888;">Total pagado</span>
-                                <strong style="color: var(--accent); font-size: 1.3rem;">Q${r.precio_total.toLocaleString('es-GT')}.00</strong>
+                            <div class="acciones-card">
+                                <span style="display:block; font-size: 0.85rem; color: #888; text-transform: uppercase;">Total pagado</span>
+                                <strong style="color: var(--accent); font-size: 1.5rem; display: block; margin-bottom: 10px;">Q${r.precio_total.toLocaleString('es-GT')}.00</strong>
                                 
-                                <button onclick="window.open('/api/descargar-boleto/${r.id_reserva}')" class="btn-primary" style="margin-top: 15px; padding: 8px 12px; font-size: 0.85rem; display: block; border-radius: 5px;">
-                                    📥 Descargar Pase
-                                </button>
+                                <div class="btn-grupo">
+                                    <button onclick="window.open('/api/descargar-boleto/${r.id_reserva}')" class="btn-primary" style="padding: 8px 12px; font-size: 0.85rem; display: block; width: 100%; border-radius: 6px;">
+                                        📥 Descargar Pase
+                                    </button>
+                                    ${btnCancelar}
+                                </div>
                             </div>
                         </div>
                     `;
                 });
             } catch (error) {
-                document.getElementById('lista-reservas').innerHTML = '<p>Error al cargar el historial.</p>';
+                document.getElementById('lista-reservas').innerHTML = '<div style="text-align:center; padding: 20px; color: red;">Error de conexión. Intenta recargar la página.</div>';
+            }
+        };
+
+        function abrirModalCancelar(idReserva, metodoPago) {
+            reservaPendienteCancelar = idReserva;
+            metodoPagoPendiente = metodoPago;
+            document.getElementById('modal-confirmacion').classList.remove('oculto');
+        }
+
+        function cerrarModalCancelar() {
+            reservaPendienteCancelar = null;
+            metodoPagoPendiente = null;
+            document.getElementById('modal-confirmacion').classList.add('oculto');
+        }
+
+        document.getElementById('btn-ejecutar-cancelacion').onclick = async function () {
+            if (!reservaPendienteCancelar) return;
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerText = "⏳ Cancelando...";
+
+            try {
+                const peticion = await fetch(`/api/cancelar-reserva/${reservaPendienteCancelar}`, { method: 'DELETE' });
+                const respuesta = await peticion.json();
+
+                cerrarModalCancelar();
+
+                if (respuesta.exito) {
+                    notificarUsuario("Viaje Cancelado", "Revisa tu correo para los detalles de tu reembolso.", "✅");
+
+                    setTimeout(() => { window.location.reload(); }, 2500);
+                } else {
+                    notificarUsuario("Error", "Hubo un problema al cancelar el viaje.", "❌");
+                    btn.disabled = false; btn.innerText = "Sí, cancelar viaje";
+                }
+            } catch (error) {
+                cerrarModalCancelar();
+                notificarUsuario("Error de Conexión", "No pudimos conectar con el servidor.", "🔌");
+                btn.disabled = false; btn.innerText = "Sí, cancelar viaje";
             }
         };
     </script>
-    <script src="js/auth.js"></script>
+
+    <footer
+        style="background-color: #001f3f; color: #e0e0e0; padding: 40px 20px 20px 20px; margin-top: 50px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div
+            style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px;">
+            <div>
+                <h3 style="color: white; margin-bottom: 15px; font-size: 1.5rem;">Viatros, S. A.</h3>
+                <p style="font-size: 0.9rem; line-height: 1.6; color: #aaaaaa;">
+                    Transformando la movilidad en Guatemala en una aventura inmersiva e inolvidable. Viaja seguro, viaja
+                    con los mejores.
+                </p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Contáctanos</h4>
+                <p style="font-size: 0.9rem; margin: 5px 0;">📍 Miraflores: Zona 11, 4to Nivel, Of. 409</p>
+                <p style="font-size: 0.9rem; margin: 5px 0;">📍 Oakland Mall: Zona 10, 3er Nivel, Of. 309</p>
+                <p style="font-size: 0.9rem; margin: 5px 0;">📞 +(502) 2222-3333</p>
+                <p style="font-size: 0.9rem; margin: 5px 0;">✉️ viatrossa@gmail.com</p>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Legal y Empresa</h4>
+                <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem;">
+                    <li style="margin-bottom: 8px;"><a href="nosotros.html"
+                            style="color: #aaaaaa; text-decoration: none;">Quiénes Somos</a></li>
+                    <li style="margin-bottom: 8px;"><a href="nosotros.html#politicas"
+                            style="color: #aaaaaa; text-decoration: none;">Políticas de Reserva y Cancelación</a></li>
+                    <li style="margin-bottom: 8px;"><a href="nosotros.html#privacidad"
+                            style="color: #aaaaaa; text-decoration: none;">Términos y Aviso de Privacidad</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: white; margin-bottom: 15px;">Síguenos</h4>
+                <div style="display: flex; gap: 15px;">
+                    <a href="https://www.facebook.com/alexander.hz.968797?locale=es_LA" target="_blank"
+                        style="color: white; text-decoration: none; font-size: 1.2rem; background: #1877F2; padding: 8px 15px; border-radius: 5px;">FB</a>
+                    <a href="https://www.instagram.com/viatrossa/" target="_blank"
+                        style="color: white; text-decoration: none; font-size: 1.2rem; background: #E1306C; padding: 8px 15px; border-radius: 5px;">IG</a>
+                    <a href="https://www.tiktok.com/@viatrossa?is_from_webapp=1&sender_device=pc" target="_blank"
+                        style="color: white; text-decoration: none; font-size: 1.2rem; background: #000000; padding: 8px 15px; border-radius: 5px; border: 1px solid #333;">TK</a>
+                </div>
+            </div>
+        </div>
+        <div
+            style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; font-size: 0.8rem; color: #777;">
+            &copy; 2026 Viatros, S. A. Todos los derechos reservados. <br>
+            Cualquier copia o reproducción sin autorización será procesada legalmente.
+        </div>
+    </footer>
 </body>
+
 </html>
